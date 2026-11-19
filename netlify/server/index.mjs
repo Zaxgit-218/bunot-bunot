@@ -3,7 +3,6 @@ import { db } from '../../db/index.ts';
 import { exchanges } from '../../db/schema.ts';
 import { randomInt } from 'node:crypto';
 
-const identityEndpoint = 'https://engineeringbunot.netlify.app/.netlify/identity/user';
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
 const view = row => ({ participants: row.participants, pairings: row.pairings, prevPairings: row.prevPairings, version: row.version });
 
@@ -11,6 +10,8 @@ async function userFor(request) {
   const cookie = request.headers.get('cookie') || '';
   const token = cookie.split(';').map(s => s.trim()).find(s => s.startsWith('nf_jwt='))?.slice(7);
   if (!token) return null;
+  // Validate against this site's own Identity instance: the session token was issued by it.
+  const identityEndpoint = new URL('/.netlify/identity/user', request.url);
   const response = await fetch(identityEndpoint, { headers: { Authorization: `Bearer ${token}` } });
   if (!response.ok) return null;
   const user = await response.json();

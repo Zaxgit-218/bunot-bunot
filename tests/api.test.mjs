@@ -26,7 +26,7 @@ mock.module('../db/index.ts', { namedExports: { db: database } });
 mock.module('../db/schema.ts', { namedExports: { exchanges: columns } });
 const { default: handler } = await import('../netlify/server/index.mjs');
 mock.method(globalThis, 'fetch', async (url) => {
-  assert.equal(url, 'https://engineeringbunot.netlify.app/.netlify/identity/user');
+  assert.equal(url.toString(), 'https://example.netlify.app/.netlify/identity/user');
   return user ? Response.json(user) : Response.json({}, { status: 401 });
 });
 const origin = 'https://example.netlify.app';
