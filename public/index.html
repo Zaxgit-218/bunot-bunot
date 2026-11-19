@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎁 Bunot Bunot — Class Gift Exchange</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #e74c3c;
+            --primary-dark: #c0392b;
+            --secondary: #27ae60;
+            --secondary-dark: #219a52;
+            --gold: #f39c12;
+            --bg: #1a1a2e;
+            --bg-card: #16213e;
+            --bg-card-hover: #1a2745;
+            --text: #eee;
+            --text-muted: #aab;
+            --border: #2a3a5c;
+            --danger: #e74c3c;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Snowfall */
+        .snowflakes { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999; overflow: hidden; }
+        .snowflake {
+            position: absolute; top: -10px; color: #fff; font-size: 1em;
+            animation: fall linear infinite, sway ease-in-out infinite; opacity: 0.7;
+        }
+        @keyframes fall { to { transform: translateY(100vh); } }
+        @keyframes sway { 0%, 100% { margin-left: 0; } 50% { margin-left: 30px; } }
+
+        /* Header */
+        .header { text-align: center; padding: 30px 16px 16px; }
+        .header h1 {
+            font-family: 'Dancing Script', cursive; font-size: 3rem;
+            background: linear-gradient(135deg, var(--primary), var(--gold), var(--secondary));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .header p { color: var(--text-muted); font-size: 0.95rem; }
+        .budget-badge {
+            display: inline-block; margin-top: 10px; padding: 7px 20px;
+            background: linear-gradient(135deg, var(--gold), #e67e22);
+            border-radius: 50px; font-weight: 600; font-size: 0.9rem; color: #fff;
+            box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);
+        }
+
+        /* Sync indicator */
+        .sync-bar {
+            text-align: center; padding: 6px; font-size: 0.8rem;
+            background: rgba(39,174,96,0.15); color: var(--secondary); border-bottom: 1px solid rgba(39,174,96,0.2);
+        }
+        .sync-bar.error { background: rgba(231,76,60,0.15); color: var(--danger); }
+        .sync-bar.syncing { background: rgba(52,152,219,0.15); color: #3498db; }
+
+        /* Navigation */
+        .nav {
+            display: flex; justify-content: center; gap: 6px; padding: 16px 12px; flex-wrap: wrap;
+        }
+        .nav button {
+            padding: 9px 18px; border: 2px solid var(--border); background: var(--bg-card);
+            color: var(--text); border-radius: 50px; cursor: pointer;
+            font-family: 'Poppins', sans-serif; font-weight: 500; font-size: 0.85rem; transition: all 0.3s;
+            white-space: nowrap;
+        }
+        .nav button:hover, .nav button.active {
+            background: var(--primary); border-color: var(--primary);
+            transform: translateY(-2px); box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+        }
+
+        .container { max-width: 800px; margin: 0 auto; padding: 0 12px 40px; }
+
+        .section { display: none; }
+        .section.active { display: block; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
+            padding: 24px; margin-bottom: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        .card h2 { font-size: 1.3rem; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+        label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.9rem; color: var(--text-muted); }
+        input, textarea {
+            width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border); border-radius: 10px; color: var(--text);
+            font-family: 'Poppins', sans-serif; font-size: 0.95rem; margin-bottom: 16px; transition: border 0.3s;
+        }
+        input:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.15); }
+
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px;
+            border: none; border-radius: 50px; font-family: 'Poppins', sans-serif;
+            font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.3s;
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3); }
+        .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4); }
+        .btn-secondary { background: linear-gradient(135deg, var(--secondary), var(--secondary-dark)); color: #fff; box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3); }
+        .btn-secondary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4); }
+        .btn-gold { background: linear-gradient(135deg, var(--gold), #e67e22); color: #fff; box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3); }
+        .btn-gold:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(243, 156, 18, 0.4); }
+        .btn-outline { background: transparent; border: 2px solid var(--border); color: var(--text); }
+        .btn-outline:hover { border-color: var(--primary); background: rgba(231,76,60,0.1); }
+        .btn-danger { background: linear-gradient(135deg, #c0392b, #962d22); color: #fff; }
+        .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
+
+        .password-field { position: relative; margin-bottom: 16px; }
+        .password-field input { margin-bottom: 0; padding-right: 78px; }
+        .password-toggle { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: var(--bg-card); color: var(--gold); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; cursor: pointer; }
+        .password-toggle:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+        .auth-message { color: var(--text-muted); margin: 16px auto; max-width: 640px; padding: 0 16px; }
+
+        .wishlist-item { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+        .wishlist-item input { margin-bottom: 0; flex: 1; min-width: 0; }
+        .wishlist-item .wish-link { flex: 0 1 180px; min-width: 100px; }
+        .wishlist-item .remove-item {
+            background: rgba(231,76,60,0.2); border: none; color: var(--danger);
+            width: 36px; height: 36px; border-radius: 50%; cursor: pointer;
+            font-size: 1.2rem; display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s; flex-shrink: 0;
+        }
+        .wishlist-item .remove-item:hover { background: var(--danger); color: #fff; }
+
+        .participant-card {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+            border-radius: 12px; margin-bottom: 10px; transition: all 0.2s;
+            gap: 8px; flex-wrap: wrap;
+        }
+        .participant-card:hover { background: rgba(255,255,255,0.06); border-color: var(--primary); }
+        .participant-info { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+        .participant-avatar {
+            width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+            background: linear-gradient(135deg, var(--primary), var(--gold));
+            display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem;
+        }
+        .participant-name { font-weight: 600; word-break: break-word; }
+        .participant-secret { font-size: 0.85rem; color: var(--text-muted); word-break: break-word; }
+        .participant-actions { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; }
+
+        .name-search { max-width: 400px; margin: 0 auto; text-align: left; }
+        .name-suggestions { margin-top: 6px; max-height: 230px; overflow-y: auto; border: 1px solid var(--secondary); border-radius: 10px; background: var(--bg-card, #202c2a); }
+        .name-suggestions button { display: block; width: 100%; padding: 12px 16px; border: 0; background: transparent; color: var(--text); text-align: left; font: inherit; cursor: pointer; }
+        .name-suggestions button:hover, .name-suggestions button[aria-selected="true"] { background: rgba(39,174,96,0.2); }
+        .name-suggestions p { padding: 12px; color: var(--text-muted); font-size: 0.85rem; }
+
+        .admin-wishlist { padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.1); overflow-wrap: anywhere; }
+        .admin-wishlist ul { padding-left: 22px; margin-top: 10px; }
+        .admin-wishlist li { padding: 5px 0; }
+        .admin-wishlist a { color: var(--gold); }
+        .admin-wishlist-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+        .reveal-box { text-align: center; padding: 30px 10px; }
+        .reveal-box .gift-emoji { font-size: 4rem; animation: bounce 1s infinite; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+
+        .reveal-result {
+            margin-top: 20px; padding: 20px; background: rgba(39,174,96,0.1);
+            border: 2px solid var(--secondary); border-radius: 16px; animation: fadeIn 0.5s ease;
+        }
+        .reveal-result h3 { color: var(--secondary); font-size: 1.1rem; margin-bottom: 10px; }
+        .reveal-result .match-name { font-family: 'Dancing Script', cursive; font-size: 2.2rem; color: var(--gold); margin: 10px 0; }
+        .reveal-result .wishlist-display { text-align: left; margin-top: 16px; }
+        .reveal-result .wishlist-display li { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); list-style: none; }
+        .reveal-result .wishlist-display li::before { content: '🎁 '; }
+        .reveal-result .wishlist-display a { color: var(--gold); text-decoration: none; }
+        .reveal-result .wishlist-display a:hover { text-decoration: underline; }
+
+        .status-bar { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 16px; }
+        .status-item {
+            text-align: center; padding: 12px 20px; background: var(--bg-card);
+            border: 1px solid var(--border); border-radius: 12px; min-width: 100px;
+        }
+        .status-item .number {
+            font-size: 1.8rem; font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--gold));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .status-item .label { font-size: 0.75rem; color: var(--text-muted); }
+
+        .toast {
+            position: fixed; bottom: 20px; left: 16px; right: 16px; max-width: 400px;
+            margin: 0 auto; padding: 14px 20px;
+            border-radius: 12px; color: #fff; font-weight: 500; font-size: 0.9rem;
+            z-index: 10000; animation: slideUp 0.3s ease; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        .toast.success { background: var(--secondary); }
+        .toast.error { background: var(--danger); }
+        .toast.info { background: #3498db; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); display: none; align-items: center;
+            justify-content: center; z-index: 10001; backdrop-filter: blur(4px);
+            padding: 16px;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px;
+            padding: 24px; max-width: 500px; width: 100%; animation: fadeIn 0.3s ease;
+            max-height: 90vh; overflow-y: auto;
+        }
+        .modal h3 { margin-bottom: 16px; }
+        .modal .btn-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; flex-wrap: wrap; }
+
+        .admin-badge {
+            display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px;
+            background: rgba(243,156,18,0.15); border: 1px solid var(--gold); border-radius: 50px;
+            font-size: 0.75rem; color: var(--gold); margin-left: 8px;
+        }
+
+        .empty-state { text-align: center; padding: 30px; color: var(--text-muted); }
+        .empty-state .emoji { font-size: 3rem; margin-bottom: 10px; }
+        .btn-row-center { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+
+        .setup-card { max-width: 500px; margin: 40px auto; }
+        .setup-card h2 { justify-content: center; text-align: center; }
+        .setup-card p { text-align: center; }
+
+        .loading-spinner {
+            display: inline-block; width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Admin buttons grid */
+        .admin-btn-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 8px; margin-top: 16px;
+        }
+        .admin-btn-grid .btn { justify-content: center; width: 100%; text-align: center; }
+
+        /* File input styling */
+        .file-input-wrapper {
+            position: relative; display: inline-flex;
+        }
+        .file-input-wrapper input[type="file"] {
+            position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+            opacity: 0; cursor: pointer;
+        }
+
+        /* Mobile-first responsive */
+        @media (max-width: 600px) {
+            .header h1 { font-size: 2.2rem; }
+            .header { padding: 20px 12px 12px; }
+            .nav { gap: 4px; padding: 10px 8px; }
+            .nav button { padding: 7px 12px; font-size: 0.75rem; }
+            .card { padding: 16px; border-radius: 12px; }
+            .card h2 { font-size: 1.1rem; }
+            .status-bar { gap: 8px; }
+            .status-item { min-width: 80px; padding: 10px 12px; }
+            .status-item .number { font-size: 1.5rem; }
+            .btn { padding: 10px 18px; font-size: 0.85rem; }
+            .btn-sm { padding: 6px 12px; font-size: 0.75rem; }
+            .reveal-box .gift-emoji { font-size: 3rem; }
+            .reveal-result .match-name { font-size: 1.8rem; }
+            .modal { padding: 18px; border-radius: 14px; }
+            .participant-card { padding: 10px 12px; }
+            .participant-avatar { width: 32px; height: 32px; font-size: 0.8rem; }
+            .admin-btn-grid { grid-template-columns: 1fr 1fr; }
+            .wishlist-item { gap: 6px; }
+            .wishlist-item .wish-link { flex: 1 1 100%; }
+            input, textarea { padding: 10px 12px; font-size: 0.9rem; }
+        }
+
+        @media (max-width: 360px) {
+            .header h1 { font-size: 1.8rem; }
+            .nav button { padding: 6px 10px; font-size: 0.7rem; }
+            .admin-btn-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="snowflakes" id="snowflakes"></div>
+
+<!-- Sync bar -->
+<div class="sync-bar" id="syncBar">🔄 Connecting to shared exchange...</div>
+
+<p id="authMessage" class="auth-message" role="status" aria-live="polite"></p>
+<div id="recoveryScreen" class="card setup-card" hidden>
+    <h2>Set a new organizer password</h2>
+    <label for="recoveryPassword">New password</label>
+    <div class="password-field"><input type="password" id="recoveryPassword" autocomplete="new-password" minlength="8" placeholder="At least 8 characters"><button type="button" class="password-toggle" aria-controls="recoveryPassword" aria-pressed="false" aria-label="Show password" onclick="togglePassword('recoveryPassword', this)">Show</button></div>
+    <button class="btn btn-primary" onclick="saveRecoveredPassword()">Save New Password</button>
+</div>
+
+<!-- Setup screen (first time) -->
+<div id="setupScreen" style="display:none;">
+    <div class="header">
+        <h1>🎄 Bunot Bunot 🎁</h1>
+        <p>Class Gift Exchange — Secret Santa Edition</p>
+    </div>
+    <div class="card setup-card">
+        <h2>🔧 First-Time Setup</h2>
+        <p style="color: var(--text-muted); margin-bottom: 20px;">
+            Organizer: create an account, confirm your email, then sign in to start your class exchange.
+            Participants can join from this site once setup is complete.
+        </p>
+        <label for="setupEmail">Organizer email</label>
+        <input type="email" id="setupEmail" placeholder="Your email address" autocomplete="email">
+        <label for="setupAdminPass">Organizer password</label>
+        <div class="password-field"><input type="password" id="setupAdminPass" placeholder="At least 8 characters" autocomplete="new-password"><button type="button" class="password-toggle" aria-controls="setupAdminPass" aria-pressed="false" aria-label="Show password" onclick="togglePassword('setupAdminPass', this)">Show</button></div>
+        <div class="btn-row-center">
+            <button class="btn btn-outline" onclick="signupAdmin()">Create Organizer Account</button>
+            <button class="btn btn-primary" onclick="completeSetup()">Sign In & Start Exchange</button>
+        </div>
+        <div class="btn-row-center" style="margin-top: 12px;">
+            <button class="btn btn-outline btn-sm" onclick="resendConfirmation('setupEmail', 'setupAdminPass', this)">Resend Confirmation Email</button>
+            <button class="btn btn-outline btn-sm" onclick="sendRecovery('setupEmail', this)">Forgot Password</button>
+        </div>
+        <p style="color: var(--text-muted); margin-top: 16px;">Already confirmed your email? Sign in above to finish setup. Check spam if the confirmation email is missing.</p>
+    </div>
+</div>
+
+<!-- Main app -->
+<div id="mainApp" style="display:none;">
+    <div class="header">
+        <h1>🎄 Bunot Bunot 🎁</h1>
+        <p>Class Gift Exchange — Secret Santa Edition</p>
+        <div class="budget-badge">💰 Minimum Budget: ₱300</div>
+    </div>
+
+    <div class="nav">
+        <button class="active" onclick="showSection('register', this)">📝 Register</button>
+        <button onclick="showSection('reveal', this)">🔍 Reveal</button>
+        <button onclick="showSection('participants', this)">👥 List</button>
+        <button onclick="showSection('admin', this)">⚙️ Admin</button>
+    </div>
+
+    <div class="container">
+        <!-- REGISTER -->
+        <div id="register" class="section active">
+            <div class="card">
+                <h2>📝 Join Bunot Bunot!</h2>
+                <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem;">
+                    Enter your real name, choose a fun secret name (alias), and add your wishlist so your Secret Santa knows what to get you!
+                </p>
+                <label for="realName">Your Real Name</label>
+                <input type="text" id="realName" placeholder="e.g. Juan Dela Cruz">
+                <label for="secretName">Your Secret Name (Alias)</label>
+                <input type="text" id="secretName" placeholder="e.g. Mystery Mango 🥭">
+                <label>Your Wishlist <span style="color:var(--text-muted)">(item name + optional link)</span></label>
+                <div id="wishlistItems">
+                    <div class="wishlist-item">
+                        <input type="text" placeholder="Item name (e.g. Cute notebook)" class="wish-name">
+                        <input type="text" placeholder="Link (optional)" class="wish-link">
+                        <button class="remove-item" onclick="removeWishItem(this)" title="Remove">×</button>
+                    </div>
+                </div>
+                <button class="btn btn-outline btn-sm" onclick="addWishItem()" style="margin-bottom: 20px;">+ Add Item</button>
+                <div>
+                    <button class="btn btn-primary" id="registerBtn" onclick="registerParticipant()">🎁 Register</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- REVEAL -->
+        <div id="reveal" class="section">
+            <div class="card">
+                <div class="reveal-box">
+                    <div class="gift-emoji">🎁</div>
+                    <h2 style="justify-content: center;">Who Did You Get?</h2>
+                    <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem;">
+                        Enter your real name to see your Bunot Bunot match!
+                    </p>
+                    <div class="name-search" onfocusout="if (!this.contains(event.relatedTarget)) closeNameSuggestions()">
+                        <label for="revealName">Your registered name</label>
+                        <input type="text" id="revealName" placeholder="Start typing your real name..." autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="nameSuggestions" aria-describedby="nameSearchHint" oninput="document.getElementById('revealResult').innerHTML = ''; updateNameSuggestions()" onfocus="updateNameSuggestions()" onkeydown="handleNameKey(event)" style="margin-bottom: 0;">
+                        <div id="nameSuggestions" class="name-suggestions" role="listbox" aria-label="Registered names" hidden></div>
+                        <p id="nameSearchHint" style="color: var(--text-muted); font-size: 0.8rem; margin-top: 8px;" aria-live="polite">Choose your registered name. Suggestions also allow small typos.</p>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <button class="btn btn-secondary" onclick="revealMatch()">🔓 Reveal My Match</button>
+                    </div>
+                    <div id="revealResult"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PARTICIPANTS -->
+        <div id="participants" class="section">
+            <div class="status-bar">
+                <div class="status-item">
+                    <div class="number" id="totalCount">0</div>
+                    <div class="label">Participants</div>
+                </div>
+                <div class="status-item">
+                    <div class="number" id="pairedStatus">❌</div>
+                    <div class="label">Paired</div>
+                </div>
+            </div>
+            <div class="card">
+                <h2>👥 Registered Participants</h2>
+                <div style="margin-bottom: 15px;">
+                    <button class="btn btn-outline btn-sm" onclick="refreshData()">🔄 Refresh</button>
+                </div>
+                <div id="participantList">
+                    <div class="empty-state"><div class="emoji">🦗</div><p>No participants yet.</p></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADMIN -->
+        <div id="admin" class="section">
+            <div class="card">
+                <h2>⚙️ Admin Panel <span class="admin-badge">🔒 Admin Only</span></h2>
+                <div id="adminLogin" style="text-align: center;">
+                    <p style="color: var(--text-muted); margin-bottom: 16px;">Sign in with the organizer account to access controls.</p>
+                    <input type="email" id="adminEmail" placeholder="Organizer email" autocomplete="email" style="max-width: 300px; text-align: center;">
+                    <div class="password-field" style="max-width: 300px; margin-left: auto; margin-right: auto;"><input type="password" id="adminPass" autocomplete="current-password" placeholder="Admin password" style="text-align: center;"><button type="button" class="password-toggle" aria-controls="adminPass" aria-pressed="false" aria-label="Show password" onclick="togglePassword('adminPass', this)">Show</button></div>
+                    <div style="margin-top: 10px;">
+                        <button class="btn btn-primary" onclick="adminLogin()">🔓 Login</button>
+                        <button class="btn btn-outline btn-sm" onclick="resendConfirmation('adminEmail', 'adminPass', this)">Resend Confirmation</button>
+                        <button class="btn btn-outline btn-sm" onclick="sendRecovery('adminEmail', this)">Forgot Password</button>
+                    </div>
+                </div>
+                <div id="adminControls" style="display: none;">
+                    <div class="card" style="background: rgba(39,174,96,0.08); border-color: var(--secondary); margin-bottom: 20px;">
+                        <h3 style="margin-bottom: 8px;">📤 Share This Link With Your Class GC</h3>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 12px;">
+                            Classmates open this link to register for your Bunot Bunot.
+                        </p>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <input type="text" id="shareLinkDisplay" readonly style="font-family: monospace; font-size: 0.8rem; margin-bottom: 0; flex: 1; min-width: 0;">
+                            <button class="btn btn-sm btn-secondary" onclick="copyShareLink()">📋 Copy</button>
+                        </div>
+                    </div>
+
+                    <div class="admin-btn-grid">
+                        <button class="btn btn-outline btn-sm" onclick="adminLogout()">🚪 Sign Out</button>
+                        <button class="btn btn-secondary" onclick="shufflePairs()">🎲 Shuffle & Pair</button>
+                        <button class="btn btn-outline btn-sm" id="undoShuffleBtn" onclick="undoShuffle()" style="display:none;">↩️ Undo Shuffle</button>
+                        <button class="btn btn-gold" onclick="exportToExcel()">📊 Export Excel</button>
+                        <button class="btn btn-outline btn-sm" onclick="document.getElementById('importFileInput').click()">📥 Import Excel</button>
+                        <button class="btn btn-danger btn-sm" onclick="confirmReset()">🗑️ Reset All</button>
+                    </div>
+                    <input type="file" id="importFileInput" accept=".xlsx,.xls" style="display:none;" onchange="importFromExcel(event)">
+
+                    <div style="margin-top: 30px;">
+                        <h3 style="margin-bottom: 10px;">🔑 Change Admin Password</h3>
+                        <div class="password-field"><input type="password" id="newAdminPass" placeholder="New password"><button type="button" class="password-toggle" aria-controls="newAdminPass" aria-pressed="false" aria-label="Show password" onclick="togglePassword('newAdminPass', this)">Show</button></div>
+                        <button class="btn btn-outline btn-sm" onclick="changePassword()">Update Password</button>
+                    </div>
+                    <div style="margin-top: 30px;">
+                        <h3 style="margin-bottom: 10px;">📋 Participant Wishlists</h3>
+                        <div id="adminWishlists"></div>
+                    </div>
+                    <div style="margin-top: 30px;">
+                        <h3 style="margin-bottom: 10px;">📋 All Pairings (Admin View)</h3>
+                        <div id="adminPairings">
+                            <p style="color: var(--text-muted);">Click "Shuffle & Pair" first to generate pairings.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Reset Modal -->
+<div class="modal-overlay" id="resetModal">
+    <div class="modal">
+        <h3>⚠️ Are you sure?</h3>
+        <p style="color: var(--text-muted);">This will delete ALL participants, wishlists, and pairings. This cannot be undone!</p>
+        <div class="btn-row">
+            <button class="btn btn-outline" onclick="closeModal('resetModal')">Cancel</button>
+            <button class="btn btn-danger" onclick="resetAll()">Yes, Delete Everything</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Participant Modal -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal">
+        <h3>✏️ Edit Participant</h3>
+        <input type="hidden" id="editOriginalName">
+        <label for="editRealName">Real Name</label>
+        <input type="text" id="editRealName" placeholder="Real name">
+        <label for="editSecretName">Secret Name (Alias)</label>
+        <input type="text" id="editSecretName" placeholder="Secret name">
+        <label>Wishlist</label>
+        <div id="editWishlistItems"></div>
+        <button class="btn btn-outline btn-sm" onclick="addEditWishItem()" style="margin-bottom: 10px;">+ Add Item</button>
+        <div class="btn-row">
+            <button class="btn btn-outline" onclick="closeModal('editModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveEdit()">💾 Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Delete Modal -->
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal">
+        <h3>⚠️ Delete Participant?</h3>
+        <p style="color: var(--text-muted);">Remove <strong id="deleteTargetName"></strong> from the exchange? Pairings will be cleared.</p>
+        <div class="btn-row">
+            <button class="btn btn-outline" onclick="closeModal('deleteModal')">Cancel</button>
+            <button class="btn btn-danger" onclick="confirmDelete()">Yes, Remove</button>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Import Modal -->
+<div class="modal-overlay" id="importModal">
+    <div class="modal">
+        <h3>📥 Confirm Import</h3>
+        <p style="color: var(--text-muted);">This will <strong>replace</strong> all current participants and pairings with the imported data.</p>
+        <p style="color: var(--text-muted); margin-top: 8px;" id="importPreview"></p>
+        <div class="btn-row">
+            <button class="btn btn-outline" onclick="closeModal('importModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="confirmImport()">Yes, Import</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ==================== SHARED DATA ====================
+let cachedData = null;
+
+async function api(path, body) {
+    if (window.identity && ['admin', 'setup', 'shuffle', 'unshuffle', 'reset', 'edit', 'delete', 'import'].includes(path)) await identity.getUser();
+    const response = await fetch('/api/' + path, {
+        method: body === undefined ? 'GET' : 'POST',
+        headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: body === undefined ? undefined : JSON.stringify(body)
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Request failed. Please try again.');
+    return result;
+}
+
+async function loadData() {
+    setSyncStatus('syncing', '🔄 Syncing...');
+    try {
+        const data = await api('data');
+        cachedData = data;
+        setSyncStatus('ok', '🟢 Connected — shared data refreshes every 15 seconds');
+        return data;
+    } catch (e) {
+        setSyncStatus('error', '🔴 Unable to sync — refresh to try again');
+        showToast(e.message, 'error');
+        return null;
+    }
+}
+
+async function mutate(path, body = {}) {
+    setSyncStatus('syncing', '🔄 Saving...');
+    try {
+        const data = await api(path, body);
+        cachedData = data;
+        renderParticipants(data);
+        if (isAdmin) {
+            renderAdminPairings(data);
+            updateUndoButton(data);
+        }
+        setSyncStatus('ok', '🟢 Saved ✓');
+        return data;
+    } catch (e) {
+        setSyncStatus('error', '🔴 Failed to save — try again');
+        throw e;
+    }
+}
+
+function setSyncStatus(type, msg) {
+    const bar = document.getElementById('syncBar');
+    bar.className = 'sync-bar' + (type === 'error' ? ' error' : type === 'syncing' ? ' syncing' : '');
+    bar.textContent = msg;
+}
+
+function togglePassword(id, button) {
+    const input = document.getElementById(id);
+    const visible = input.type === 'password';
+    input.type = visible ? 'text' : 'password';
+    button.textContent = visible ? 'Hide' : 'Show';
+    button.setAttribute('aria-pressed', String(visible));
+    button.setAttribute('aria-label', visible ? 'Hide password' : 'Show password');
+}
+
+function authMessage(message) {
+    document.getElementById('authMessage').textContent = message;
+}
+
+async function resendConfirmation(emailId, passwordId, button) {
+    const emailInput = document.getElementById(emailId);
+    const password = document.getElementById(passwordId).value;
+    if (!emailInput.value.trim() || !emailInput.checkValidity() || password.length < 8) {
+        return authMessage('Enter your organizer email and original password (at least 8 characters) to resend confirmation.');
+    }
+    button.disabled = true;
+    try {
+        await identity.signup(emailInput.value.trim(), password);
+        authMessage('Confirmation requested. Check your inbox and spam folder, then open the newest confirmation link. If already confirmed, sign in.');
+    } catch (e) { authMessage(e.status === 429 ? 'Too many email requests. Wait a few minutes before trying again.' : e.message); }
+    finally { button.disabled = false; }
+}
+
+async function sendRecovery(emailId, button) {
+    const input = document.getElementById(emailId);
+    if (!input.value.trim() || !input.checkValidity()) return authMessage('Enter a valid organizer email address first.');
+    button.disabled = true;
+    try {
+        await identity.requestPasswordRecovery(input.value.trim());
+        authMessage('If an account exists for that email, a password reset link has been requested. Check your inbox and spam folder.');
+    } catch (e) { authMessage(e.status === 429 ? 'Too many email requests. Wait a few minutes before trying again.' : e.message); }
+    finally { button.disabled = false; }
+}
+
+async function saveRecoveredPassword() {
+    const input = document.getElementById('recoveryPassword');
+    if (input.value.length < 8) return authMessage('Use at least 8 characters for your new password.');
+    try {
+        await identity.updateUser({ password: input.value });
+        input.value = '';
+        document.getElementById('recoveryScreen').hidden = true;
+        authMessage('Password updated. You can now use your new password to sign in.');
+        await initApp();
+    } catch (e) { authMessage(e.message); }
+}
+
+// ==================== ORGANIZER SETUP ====================
+async function signupAdmin() {
+    const email = document.getElementById('setupEmail').value.trim();
+    const password = document.getElementById('setupAdminPass').value;
+    if (!email || password.length < 8) return showToast('Enter your email and a password of at least 8 characters.', 'error');
+    try {
+        const user = await identity.signup(email, password);
+        if (user.emailVerified) await finishSetup();
+        else authMessage('Account created. Check your inbox and spam folder for the confirmation email. Open the newest link to finish setup. Use Resend Confirmation Email if needed.');
+    } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function finishSetup() {
+    await api('setup', {});
+    showToast('🎉 Exchange ready! Share the site link with your class.');
+    await initApp();
+}
+
+async function completeSetup() {
+    try {
+        await identity.login(document.getElementById('setupEmail').value.trim(), document.getElementById('setupAdminPass').value);
+        await finishSetup();
+    } catch (e) { showToast(e.message, 'error'); }
+}
+
+// ==================== NAVIGATION ====================
+function showSection(id, btn) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    if (id === 'participants') refreshData();
+}
+
+// ==================== TOAST ====================
+function showToast(msg, type = 'success') {
+    const existing = document.querySelector('.toast');
+    if (existing) existing.remove();
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+// ==================== REGISTRATION ====================
+function addWishItem() {
+    const container = document.getElementById('wishlistItems');
+    const div = document.createElement('div');
+    div.className = 'wishlist-item';
+    div.innerHTML = `
+        <input type="text" placeholder="Item name" class="wish-name">
+        <input type="text" placeholder="Link (optional)" class="wish-link">
+        <button class="remove-item" onclick="removeWishItem(this)" title="Remove">×</button>
+    `;
+    container.appendChild(div);
+}
+
+function removeWishItem(btn) {
+    if (document.querySelectorAll('#wishlistItems .wishlist-item').length > 1) btn.parentElement.remove();
+}
+
+async function registerParticipant() {
+    const realName = document.getElementById('realName').value.trim();
+    const secretName = document.getElementById('secretName').value.trim();
+    if (!realName || !secretName) return showToast('Please fill in both names!', 'error');
+
+    const btn = document.getElementById('registerBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading-spinner"></span> Registering...';
+
+    try {
+        const data = await loadData();
+        if (!data) return;
+        if (data.participants.find(p => p.realName.toLowerCase() === realName.toLowerCase())) {
+            showToast('This name is already registered!', 'error');
+            return;
+        }
+
+        const wishlist = [];
+        document.querySelectorAll('#wishlistItems .wishlist-item').forEach(item => {
+            const name = item.querySelector('.wish-name').value.trim();
+            const link = item.querySelector('.wish-link').value.trim();
+            if (name) wishlist.push({ name, link });
+        });
+        if (wishlist.length === 0) {
+            showToast('Add at least one wishlist item!', 'error');
+            return;
+        }
+
+        await mutate('register', { realName, secretName, wishlist });
+
+        document.getElementById('realName').value = '';
+        document.getElementById('secretName').value = '';
+        document.getElementById('wishlistItems').innerHTML = `
+            <div class="wishlist-item">
+                <input type="text" placeholder="Item name (e.g. Cute notebook)" class="wish-name">
+                <input type="text" placeholder="Link (optional)" class="wish-link">
+                <button class="remove-item" onclick="removeWishItem(this)" title="Remove">×</button>
+            </div>
+        `;
+        showToast(`🎉 ${realName} has been registered!`);
+    } catch (e) {
+        showToast(e.message, 'error');
+    } finally {
+        btn.disabled = false; btn.innerHTML = '🎁 Register';
+    }
+}
+
+// ==================== PARTICIPANTS ====================
+async function refreshData() {
+    const data = await loadData();
+    if (!data) return;
+    renderParticipants(data);
+    if (isAdmin) {
+        renderAdminPairings(data);
+        updateUndoButton(data);
+    }
+}
+
+function renderParticipants(data) {
+    const list = document.getElementById('participantList');
+    document.getElementById('totalCount').textContent = data.participants.length;
+    document.getElementById('pairedStatus').textContent = data.pairings.length > 0 ? '✅' : '❌';
+
+    if (data.participants.length === 0) {
+        list.innerHTML = '<div class="empty-state"><div class="emoji">🦗</div><p>No participants yet. Be the first to register!</p></div>';
+        return;
+    }
+    list.innerHTML = data.participants.map(p => `
+        <div class="participant-card">
+            <div class="participant-info">
+                <div class="participant-avatar">${esc(p.realName.charAt(0).toUpperCase())}</div>
+                <div>
+                    <div class="participant-name">${esc(p.realName)}</div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// ==================== REVEAL ====================
+let suggestedNames = [];
+let activeNameIndex = -1;
+function normalizeName(name) {
+    return name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
+}
+function nameDistance(a, b) {
+    const rows = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+    for (let j = 0; j <= b.length; j++) rows[0][j] = j;
+    for (let i = 1; i <= a.length; i++) {
+        for (let j = 1; j <= b.length; j++) {
+            rows[i][j] = Math.min(rows[i - 1][j] + 1, rows[i][j - 1] + 1, rows[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+            if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) rows[i][j] = Math.min(rows[i][j], rows[i - 2][j - 2] + 1);
+        }
+    }
+    return rows[a.length][b.length];
+}
+function matchingNames(participants, query) {
+    const term = normalizeName(query).slice(0, 150);
+    return participants.map(p => {
+        const name = normalizeName(p.realName);
+        const distance = Math.min(nameDistance(term, name), ...name.split(' ').map(word => nameDistance(term, word)));
+        const score = !term || name.startsWith(term) ? 0 : name.includes(term) ? 1 : distance <= (term.length < 5 ? 1 : 2) ? distance + 2 : Infinity;
+        return { name: p.realName, score };
+    }).filter(p => Number.isFinite(p.score)).sort((a, b) => a.score - b.score || a.name.localeCompare(b.name)).slice(0, 8).map(p => p.name);
+}
+function closeNameSuggestions() {
+    document.getElementById('nameSuggestions').hidden = true;
+    const input = document.getElementById('revealName');
+    input.setAttribute('aria-expanded', 'false');
+    input.removeAttribute('aria-activedescendant');
+    activeNameIndex = -1;
+}
+function updateNameSuggestions() {
+    const input = document.getElementById('revealName');
+    suggestedNames = matchingNames(cachedData?.participants || [], input.value);
+    activeNameIndex = -1;
+    input.removeAttribute('aria-activedescendant');
+    const list = document.getElementById('nameSuggestions');
+    list.innerHTML = suggestedNames.length ? suggestedNames.map((name, i) => `<button type="button" role="option" aria-selected="false" id="name-option-${i}" onmousedown="event.preventDefault()" onclick="selectSuggestedName(${i})">${esc(name)}</button>`).join('') : '<p role="status">No matching names. Check your spelling or registration.</p>';
+    list.hidden = false;
+    input.setAttribute('aria-expanded', 'true');
+}
+function selectSuggestedName(index) {
+    document.getElementById('revealName').value = suggestedNames[index];
+    document.getElementById('revealResult').innerHTML = '';
+    document.getElementById('revealName').focus();
+    closeNameSuggestions();
+}
+function handleNameKey(event) {
+    const list = document.getElementById('nameSuggestions');
+    if (event.key === 'Escape') return closeNameSuggestions();
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        if (!list.hidden && activeNameIndex >= 0) selectSuggestedName(activeNameIndex);
+        else revealMatch();
+    }
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    event.preventDefault();
+    if (list.hidden) updateNameSuggestions();
+    if (!suggestedNames.length) return;
+    activeNameIndex = (activeNameIndex + (event.key === 'ArrowDown' ? 1 : -1) + suggestedNames.length) % suggestedNames.length;
+    list.querySelectorAll('[role="option"]').forEach((option, i) => option.setAttribute('aria-selected', String(i === activeNameIndex)));
+    const option = document.getElementById('name-option-' + activeNameIndex);
+    document.getElementById('revealName').setAttribute('aria-activedescendant', option.id);
+    option.scrollIntoView({ block: 'nearest' });
+}
+
+async function revealMatch() {
+    const name = document.getElementById('revealName').value.trim();
+    const resultDiv = document.getElementById('revealResult');
+    resultDiv.innerHTML = '';
+    closeNameSuggestions();
+    if (!name) return showToast('Please enter your name!', 'error');
+
+    const data = await loadData();
+    if (!data || data.pairings.length === 0) return showToast("Pairings haven't been drawn yet! Ask your admin.", 'error');
+
+    const pairing = data.pairings.find(p => p.giver.toLowerCase() === name.toLowerCase());
+    if (!pairing) {
+        updateNameSuggestions();
+        return showToast('Choose your registered name from the suggestions, then reveal again.', 'error');
+    }
+
+    const receiver = data.participants.find(p => p.realName === pairing.receiver);
+    if (!receiver) return showToast('Something went wrong. Contact admin.', 'error');
+
+    const wishHtml = receiver.wishlist.map(w => {
+        if (w.link) return `<li>${esc(w.name)} — <a href="${esc(w.link)}" target="_blank">🔗 Link</a></li>`;
+        return `<li>${esc(w.name)}</li>`;
+    }).join('');
+
+    resultDiv.innerHTML = `
+        <div class="reveal-result">
+            <h3>🎉 You are the Secret Santa of...</h3>
+            <div class="match-name">${esc(receiver.secretName)}</div>
+            <p style="color: var(--text-muted); font-size: 0.85rem;">Remember: minimum budget is <strong>₱300</strong></p>
+            <div class="wishlist-display">
+                <h4 style="margin-bottom: 8px;">📋 Their Wishlist:</h4>
+                <ul style="padding: 0;">${wishHtml}</ul>
+            </div>
+        </div>
+    `;
+}
+
+// ==================== ADMIN ====================
+let isAdmin = false;
+
+async function showAdminControls() {
+    const data = await api('admin');
+    isAdmin = true;
+    cachedData = data;
+    document.getElementById('adminLogin').style.display = 'none';
+    document.getElementById('adminControls').style.display = 'block';
+    document.getElementById('shareLinkDisplay').value = location.origin;
+    renderAdminPairings(data);
+    updateUndoButton(data);
+}
+
+async function adminLogin() {
+    try {
+        await identity.login(document.getElementById('adminEmail').value.trim(), document.getElementById('adminPass').value);
+        document.getElementById('adminPass').value = '';
+        await showAdminControls();
+        showToast('Welcome, Admin! 🔓');
+    } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function adminLogout() {
+    try {
+        await identity.logout();
+        isAdmin = false;
+        document.getElementById('adminLogin').style.display = 'block';
+        document.getElementById('adminControls').style.display = 'none';
+        document.getElementById('adminPairings').textContent = '';
+        document.getElementById('adminWishlists').textContent = '';
+        showToast('Signed out.');
+    } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function copyShareLink() {
+    try {
+        await navigator.clipboard.writeText(location.origin);
+        showToast('📋 Link copied! Share it in your GC.');
+    } catch (e) { showToast('Select and copy the link above.', 'info'); }
+}
+
+async function changePassword() {
+    const newPass = document.getElementById('newAdminPass').value;
+    if (newPass.length < 8) return showToast('Password must be at least 8 characters!', 'error');
+    try {
+        await identity.updateUser({ password: newPass });
+        document.getElementById('newAdminPass').value = '';
+        showToast('Password updated! 🔑');
+    } catch (e) { showToast(e.message, 'error'); }
+}
+
+// ==================== SHUFFLE / UNSHUFFLE ====================
+async function shufflePairs() {
+    try {
+        const data = await mutate('shuffle');
+        showToast(`🎲 Successfully paired ${data.pairings.length} people!`);
+    } catch (e) { showToast(e.message, 'error'); }
+}
+
+function updateUndoButton(data) {
+    const btn = document.getElementById('undoShuffleBtn');
+    if (data.prevPairings && data.prevPairings.length > 0) {
+        btn.style.display = 'inline-flex';
+    } else {
+        btn.style.display = 'none';
+    }
+}
+
+async function undoShuffle() {
+    try {
+        const data = await mutate('unshuffle');
+        showToast('↩️ Previous pairings restored!');
+    } catch (e) { showToast(e.message, 'error'); }
+}
+
+// ==================== ADMIN RENDER ====================
+function renderAdminPairings(data) {
+    // Wishlists with edit/delete buttons
+    document.getElementById('adminWishlists').innerHTML = data.participants.length ? data.participants.map(p => `
+        <div class="admin-wishlist">
+            <div class="admin-wishlist-header">
+                <div>
+                    <div class="participant-name">${esc(p.realName)}</div>
+                    <div class="participant-secret">${esc(p.secretName)}</div>
+                </div>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    <button class="btn btn-outline btn-sm" onclick="openEditModal('${esc(p.realName).replace(/'/g, "\\'")}')">✏️ Edit</button>
+                    <button class="btn btn-danger btn-sm" onclick="openDeleteModal('${esc(p.realName).replace(/'/g, "\\'")}')">🗑️</button>
+                </div>
+            </div>
+            <ul>${p.wishlist.map(w => `<li>${esc(w.name)}${/^https?:\/\//i.test(w.link) ? ` — <a href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">View item</a>` : ''}</li>`).join('')}</ul>
+        </div>
+    `).join('') : '<p style="color: var(--text-muted);">Wishlists appear here when participants register.</p>';
+
+    // Pairings
+    const container = document.getElementById('adminPairings');
+    if (!data.pairings.length) {
+        container.innerHTML = '<p style="color: var(--text-muted);">Click "Shuffle & Pair" first.</p>';
+        return;
+    }
+    container.innerHTML = data.pairings.map(p => {
+        const receiver = data.participants.find(pt => pt.realName === p.receiver);
+        return `
+            <div class="participant-card">
+                <div class="participant-info">
+                    <div class="participant-avatar">→</div>
+                    <div>
+                        <div class="participant-name">${esc(p.giver)}</div>
+                        <div class="participant-secret">gives to → <strong>${esc(p.receiver)}</strong> (🎭 ${esc(receiver?.secretName || '?')})</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ==================== EDIT PARTICIPANT ====================
+function openEditModal(realName) {
+    const participant = cachedData?.participants.find(p => p.realName === realName);
+    if (!participant) return showToast('Participant not found.', 'error');
+
+    document.getElementById('editOriginalName').value = participant.realName;
+    document.getElementById('editRealName').value = participant.realName;
+    document.getElementById('editSecretName').value = participant.secretName;
+
+    const container = document.getElementById('editWishlistItems');
+    container.innerHTML = '';
+    participant.wishlist.forEach(w => {
+        addEditWishItem(w.name, w.link);
+    });
+
+    document.getElementById('editModal').classList.add('show');
+}
+
+function addEditWishItem(name = '', link = '') {
+    const container = document.getElementById('editWishlistItems');
+    const div = document.createElement('div');
+    div.className = 'wishlist-item';
+    div.innerHTML = `
+        <input type="text" placeholder="Item name" class="wish-name" value="${esc(name)}">
+        <input type="text" placeholder="Link (optional)" class="wish-link" value="${esc(link)}">
+        <button class="remove-item" onclick="removeEditWishItem(this)" title="Remove">×</button>
+    `;
+    container.appendChild(div);
+}
+
+function removeEditWishItem(btn) {
+    if (document.querySelectorAll('#editWishlistItems .wishlist-item').length > 1) btn.parentElement.remove();
+}
+
+async function saveEdit() {
+    const originalName = document.getElementById('editOriginalName').value;
+    const newRealName = document.getElementById('editRealName').value.trim();
+    const newSecretName = document.getElementById('editSecretName').value.trim();
+
+    if (!newRealName || !newSecretName) return showToast('Both names are required.', 'error');
+
+    const newWishlist = [];
+    document.querySelectorAll('#editWishlistItems .wishlist-item').forEach(item => {
+        const name = item.querySelector('.wish-name').value.trim();
+        const link = item.querySelector('.wish-link').value.trim();
+        if (name) newWishlist.push({ name, link });
+    });
+
+    if (newWishlist.length === 0) return showToast('Add at least one wishlist item.', 'error');
+
+    try {
+        await mutate('edit', {
+            realName: originalName,
+            newRealName: newRealName !== originalName ? newRealName : undefined,
+            newSecretName,
+            newWishlist
+        });
+        closeModal('editModal');
+        showToast(`✏️ ${newRealName} updated!`);
+    } catch (e) { showToast(e.message, 'error'); }
+}
+
+// ==================== DELETE PARTICIPANT ====================
+let deleteTargetRealName = '';
+function openDeleteModal(realName) {
+    deleteTargetRealName = realName;
+    document.getElementById('deleteTargetName').textContent = realName;
+    document.getElementById('deleteModal').classList.add('show');
+}
+
+async function confirmDelete() {
+    try {
+        await mutate('delete', { realName: deleteTargetRealName });
+        closeModal('deleteModal');
+        showToast(`🗑️ ${deleteTargetRealName} removed.`);
+    } catch (e) { showToast(e.message, 'error'); }
+}
+
+// ==================== EXPORT ====================
+async function exportToExcel() {
+    const data = await loadData();
+    if (!data || !data.participants.length) return showToast('No participants to export!', 'error');
+
+    const rows = data.participants.map(p => {
+        const pairing = data.pairings.find(pr => pr.giver === p.realName);
+        const matched = pairing ? data.participants.find(pt => pt.realName === pairing.receiver) : null;
+        return {
+            'Real Name': p.realName,
+            'Secret Name (Alias)': p.secretName,
+            'Wishlist Items': p.wishlist.map(w => w.name).join(', '),
+            'Wishlist Links': p.wishlist.map(w => w.link || '—').join(', '),
+            'Gives Gift To (Real Name)': pairing ? pairing.receiver : 'Not yet paired',
+            'Gives Gift To (Secret Name)': matched ? matched.secretName : 'Not yet paired',
+        };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = Object.keys(rows[0]).map(k => ({ wch: Math.max(k.length, ...rows.map(r => (r[k] || '').length)) + 2 }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Bunot Bunot');
+    XLSX.writeFile(wb, 'BunotBunot_ClassList.xlsx');
+    showToast('📊 Excel file downloaded!');
+}
+
+// ==================== IMPORT ====================
+let pendingImport = null;
+
+function importFromExcel(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    event.target.value = ''; // reset so same file can be re-selected
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        try {
+            const wb = XLSX.read(e.target.result, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(ws);
+
+            if (!rows.length) return showToast('The Excel file is empty.', 'error');
+
+            // Parse participants from the exported format
+            const participants = [];
+            const pairings = [];
+
+            for (const row of rows) {
+                const realName = (row['Real Name'] || '').toString().trim();
+                const secretName = (row['Secret Name (Alias)'] || '').toString().trim();
+                const wishlistItemsStr = (row['Wishlist Items'] || '').toString().trim();
+                const wishlistLinksStr = (row['Wishlist Links'] || '').toString().trim();
+                const givesTo = (row['Gives Gift To (Real Name)'] || '').toString().trim();
+
+                if (!realName || !secretName) continue;
+
+                // Parse wishlist: items and links are comma-separated
+                const itemNames = wishlistItemsStr.split(',').map(s => s.trim()).filter(Boolean);
+                const itemLinks = wishlistLinksStr.split(',').map(s => s.trim());
+                const wishlist = itemNames.map((name, i) => ({
+                    name,
+                    link: (itemLinks[i] && itemLinks[i] !== '—' && /^https?:\/\//i.test(itemLinks[i])) ? itemLinks[i] : ''
+                }));
+
+                if (wishlist.length === 0) {
+                    wishlist.push({ name: 'No wishlist specified', link: '' });
+                }
+
+                participants.push({ realName, secretName, wishlist });
+
+                if (givesTo && givesTo !== 'Not yet paired') {
+                    pairings.push({ giver: realName, receiver: givesTo });
+                }
+            }
+
+            if (participants.length === 0) return showToast('No valid participants found in the file.', 'error');
+
+            pendingImport = { participants, pairings: pairings.length === participants.length ? pairings : [] };
+            document.getElementById('importPreview').textContent =
+                `Found ${participants.length} participant${participants.length !== 1 ? 's' : ''}` +
+                (pairings.length === participants.length ? ` with ${pairings.length} pairing${pairings.length !== 1 ? 's' : ''}.` : '.');
+            document.getElementById('importModal').classList.add('show');
+        } catch (err) {
+            showToast('Could not read the Excel file. Make sure it matches the export format.', 'error');
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+async function confirmImport() {
+    if (!pendingImport) return;
+    try {
+        await mutate('import', pendingImport);
+        closeModal('importModal');
+        pendingImport = null;
+        showToast('📥 Data imported successfully!');
+    } catch (e) {
+        showToast(e.message, 'error');
+    }
+}
+
+// ==================== RESET ====================
+function confirmReset() { document.getElementById('resetModal').classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+async function resetAll() {
+    try {
+        await mutate('reset');
+        closeModal('resetModal');
+        document.getElementById('revealResult').innerHTML = '';
+        showToast('All data has been reset!', 'info');
+    } catch (e) { showToast(e.message, 'error'); }
+}
+
+// ==================== UTILS ====================
+function esc(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML.replaceAll('"', '&quot;').replaceAll("'", '&#39;'); }
+
+function createSnowflakes() {
+    const c = document.getElementById('snowflakes');
+    const flakes = ['❄', '❅', '❆', '✦', '•'];
+    for (let i = 0; i < 40; i++) {
+        const f = document.createElement('div');
+        f.className = 'snowflake';
+        f.textContent = flakes[Math.floor(Math.random() * flakes.length)];
+        f.style.left = Math.random() * 100 + '%';
+        f.style.fontSize = (Math.random() * 10 + 8) + 'px';
+        f.style.opacity = Math.random() * 0.6 + 0.2;
+        f.style.animationDuration = (Math.random() * 5 + 5) + 's, ' + (Math.random() * 3 + 2) + 's';
+        f.style.animationDelay = Math.random() * 10 + 's';
+        c.appendChild(f);
+    }
+}
+
+// ==================== INIT ====================
+let refreshTimer;
+async function initApp() {
+    clearInterval(refreshTimer);
+    try {
+        const { initialized } = await api('status');
+        document.getElementById('setupScreen').style.display = initialized ? 'none' : 'block';
+        document.getElementById('mainApp').style.display = initialized ? 'block' : 'none';
+        if (!initialized) {
+            setSyncStatus('ok', '🎄 Waiting for the organizer to finish setup');
+            return;
+        }
+        await refreshData();
+        try { await showAdminControls(); } catch (_) {
+            isAdmin = false;
+            document.getElementById('adminLogin').style.display = 'block';
+            document.getElementById('adminControls').style.display = 'none';
+        }
+        refreshTimer = setInterval(() => { if (!document.hidden) refreshData(); }, 15000);
+    } catch (e) {
+        setSyncStatus('error', '🔴 Unable to connect — refresh this page to retry');
+        showToast(e.message, 'error');
+    }
+}
+
+createSnowflakes();
+window.addEventListener('identity-ready', async () => {
+    // Remove the obsolete browser configuration without reading or reusing it.
+    try { localStorage.removeItem('bunotBunotConfig'); } catch (_) {}
+    try {
+        const callback = await identity.handleAuthCallback();
+        if (callback?.type === 'recovery') {
+            document.getElementById('recoveryScreen').hidden = false;
+            document.getElementById('setupScreen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'none';
+            authMessage('Reset link accepted. Choose a new password below.');
+            document.getElementById('recoveryPassword').focus();
+            return;
+        }
+        if (callback?.type === 'confirmation') {
+            authMessage('Email confirmed. Your organizer account is ready.');
+            const status = await api('status');
+            if (!status.initialized) await api('setup', {});
+        }
+    } catch (e) { authMessage('Unable to open the email link: ' + e.message + ' Request a new confirmation or password reset email and use the newest link.'); }
+    await initApp();
+});
+</script>
+<script type="module" src="/identity.js"></script>
+</body>
+</html>
